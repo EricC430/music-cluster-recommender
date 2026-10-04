@@ -1,0 +1,10 @@
+flask
+pandas
+numpy
+scikit-learn
+joblib
+plotly
+matplotlib
+selenium
+webdriver-manager
+beautifulsoup4

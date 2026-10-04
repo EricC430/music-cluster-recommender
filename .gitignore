@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 資料與模型（需自行爬取 / 訓練產生，見 README）
+music.db
+*.db
+models/*.pkl
+
+# 爬蟲 log 與執行期產生的檔案
+logs/
+static/cluster_tree_plot.png
+
+# 本地暫存 / 舊版原型（含第三方網頁快照）
+_scratch/
+
+# 編輯器 / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

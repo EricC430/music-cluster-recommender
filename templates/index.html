@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音樂分群推薦系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 20px;
+            padding-bottom: 50px;
+        }
+
+        .feature-input {
+            margin-bottom: 15px;
+        }
+
+        .range-value {
+            font-weight: bold;
+            color: #0d6efd;
+            margin-left: 10px;
+            float: right;
+        }
+
+        .tree-img {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Loading Overlay */
+        #loadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loadingOverlay">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <h4 class="mt-3 text-primary">正在分析歌曲，請稍候...</h4>
+        <p class="text-muted">正在爬取 Chosic 分析資料</p>
+    </div>
+
+    <div class="container">
+        <h1 class="text-center mb-4">🎵 AI 音樂分群與推薦系統</h1>
+
+        <div class="row">
+            <div class="col-md-5">
+
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <i class="fab fa-spotify"></i> 從 Spotify ID 匯入
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group mb-3">
+                            <input type="text" id="spotifyIdInput" class="form-control"
+                                placeholder="例如: 0yOAmAgOpO9Jss3ZzQrf77">
+                            <button class="btn btn-outline-primary" type="button" id="btnImport"
+                                onclick="importSpotifyData()">
+                                <i class="fas fa-download"></i> 載入
+                            </button>
+                        </div>
+                        <small class="text-muted">輸入 ID 後，AI 會自動爬取分析數值並填入下方滑桿。</small>
+                        <div id="importMsg" class="mt-2"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <i class="fas fa-sliders-h"></i> 歌曲特徵參數
+                    </div>
+                    <div class="card-body">
+                        <form action="/recommend" method="POST">
+
+                            <div class="feature-input">
+                                <label class="form-label">BPM (速度)</label>
+                                <span id="val_bpm" class="range-value">120</span>
+                                <input type="range" class="form-range" name="bpm" id="in_bpm" min="0" max="220" step="1"
+                                    value="120" oninput="updateVal(this, 'val_bpm')">
+                            </div>
+
+                            <div class="feature-input">
+                                <label class="form-label">Energy (能量)</label>
+                                <span id="val_energy" class="range-value">0.50</span>
+                                <input type="range" class="form-range" name="energy" id="in_energy" min="0" max="1"
+                                    step="0.01" value="0.50" oninput="updateVal(this, 'val_energy')">
+                            </div>
+
+                            <div class="feature-input">
+                                <label class="form-label">Danceability (舞曲感)</label>
+                                <span id="val_dance" class="range-value">0.50</span>
+                                <input type="range" class="form-range" name="danceability" id="in_danceability" min="0"
+                                    max="1" step="0.01" value="0.50" oninput="updateVal(this, 'val_dance')">
+                            </div>
+
+                            <div class="feature-input">
+                                <label class="form-label">Happiness (開心/Valence)</label>
+                                <span id="val_happy" class="range-value">0.50</span>
+                                <input type="range" class="form-range" name="happiness" id="in_happiness" min="0"
+                                    max="1" step="0.01" value="0.50" oninput="updateVal(this, 'val_happy')">
+                            </div>
+
+                            <div class="feature-input">
+                                <label class="form-label">Acousticness (原聲感)</label>
+                                <span id="val_acoustic" class="range-value">0.10</span>
+                                <input type="range" class="form-range" name="acousticness" id="in_acousticness" min="0"
+                                    max="1" step="0.01" value="0.10" oninput="updateVal(this, 'val_acoustic')">
+                            </div>
+
+                            <div class="feature-input">
+                                <label class="form-label">Instrumentalness (樂器感)</label>
+                                <span id="val_instru" class="range-value">0.00</span>
+                                <input type="range" class="form-range" name="instrumentalness" id="in_instrumentalness"
+                                    min="0" max="1" step="0.01" value="0.00" oninput="updateVal(this, 'val_instru')">
+                            </div>
+
+                            <div class="feature-input">
+                                <label class="form-label">Liveness (現場感)</label>
+                                <span id="val_live" class="range-value">0.10</span>
+                                <input type="range" class="form-range" name="liveness" id="in_liveness" min="0" max="1"
+                                    step="0.01" value="0.10" oninput="updateVal(this, 'val_live')">
+                            </div>
+
+                            <div class="feature-input">
+                                <label class="form-label">Speechiness (人聲感)</label>
+                                <span id="val_speech" class="range-value">0.10</span>
+                                <input type="range" class="form-range" name="speechiness" id="in_speechiness" min="0"
+                                    max="1" step="0.01" value="0.10" oninput="updateVal(this, 'val_speech')">
+                            </div>
+
+                            <div class="feature-input">
+                                <label class="form-label">Loudness (響度 dB)</label>
+                                <span id="val_loud" class="range-value">-10</span>
+                                <input type="range" class="form-range" name="loudness" id="in_loudness" min="-60"
+                                    max="0" step="1" value="-10" oninput="updateVal(this, 'val_loud')">
+                            </div>
+
+                            <div class="card bg-light mb-3">
+                                <div class="card-body py-2">
+                                    <h6 class="card-title text-muted mb-2"><i class="fas fa-music"></i> 音樂調性 (Key /
+                                        Camelot)</h6>
+
+                                    <select class="form-select" name="camelot_code" id="in_camelot">
+                                        <option value="Unknown">未知 / 不確定</option>
+
+                                        <optgroup label="Major Keys (大調)">
+                                            <option value="1B">1B - B Major</option>
+                                            <option value="2B">2B - F# Major</option>
+                                            <option value="3B">3B - Db Major</option>
+                                            <option value="4B">4B - Ab Major</option>
+                                            <option value="5B">5B - Eb Major</option>
+                                            <option value="6B">6B - Bb Major</option>
+                                            <option value="7B">7B - F Major</option>
+                                            <option value="8B">8B - C Major</option>
+                                            <option value="9B">9B - G Major</option>
+                                            <option value="10B">10B - D Major</option>
+                                            <option value="11B">11B - A Major</option>
+                                            <option value="12B">12B - E Major</option>
+                                        </optgroup>
+
+                                        <optgroup label="Minor Keys (小調)">
+                                            <option value="1A">1A - Ab Minor</option>
+                                            <option value="2A">2A - Eb Minor</option>
+                                            <option value="3A">3A - Bb Minor</option>
+                                            <option value="4A">4A - F Minor</option>
+                                            <option value="5A">5A - C Minor</option>
+                                            <option value="6A">6A - G Minor</option>
+                                            <option value="7A">7A - D Minor</option>
+                                            <option value="8A">8A - A Minor</option>
+                                            <option value="9A">9A - E Minor</option>
+                                            <option value="10A">10A - B Minor</option>
+                                            <option value="11A">11A - F# Minor</option>
+                                            <option value="12A">12A - Db Minor</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-success w-100 btn-lg mt-3">
+                                <i class="fas fa-search"></i> 開始 KNN 搜尋推薦
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">模型分群邏輯 (Cluster Interpretation)</div>
+                    <div class="card-body text-center">
+                        <p class="text-muted">下方展示 Decision Tree 如何根據特徵將歌曲分類。</p>
+                        <img src="{{ url_for('static', filename='cluster_tree_plot.png') }}" alt="Decision Tree"
+                            class="tree-img">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 更新滑桿顯示數值的 helper function
+        function updateVal(input, spanId) {
+            // 如果是小數點，保留兩位
+            let val = parseFloat(input.value);
+            // 判斷是否為整數 (BPM, Loudness 通常是整數)
+            if (input.step == "1") {
+                document.getElementById(spanId).innerText = val;
+            } else {
+                document.getElementById(spanId).innerText = val.toFixed(2);
+            }
+        }
+
+        async function importSpotifyData() {
+            const idInput = document.getElementById('spotifyIdInput');
+            const songId = idInput.value.trim();
+            const msgBox = document.getElementById('importMsg');
+            const overlay = document.getElementById('loadingOverlay');
+
+            if (!songId) {
+                alert("請輸入 Spotify ID！");
+                return;
+            }
+
+            // 1. 顯示 Loading
+            overlay.style.display = "flex";
+            msgBox.innerHTML = "";
+
+            try {
+                // 2. 呼叫後端 API
+                const response = await fetch('/api/import_spotify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ spotify_id: songId })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const data = result.data;
+                    msgBox.innerHTML = `<div class="alert alert-success">✅ 成功載入: <b>${data.title}</b></div>`;
+
+                    // 3. 自動填入數值並觸發更新事件 (讓文字也跟著變)
+                    setSliderValue('in_bpm', 'val_bpm', data.bpm);
+                    setSliderValue('in_energy', 'val_energy', data.energy / 100);
+                    setSliderValue('in_danceability', 'val_dance', data.danceability / 100);
+                    setSliderValue('in_happiness', 'val_happy', data.happiness / 100);
+                    setSliderValue('in_acousticness', 'val_acoustic', data.acousticness / 100);
+                    setSliderValue('in_instrumentalness', 'val_instru', data.instrumentalness / 100);
+                    setSliderValue('in_liveness', 'val_live', data.liveness / 100);
+                    setSliderValue('in_speechiness', 'val_speech', data.speechiness / 100);
+
+                    // Loudness 是負數，直接填入
+                    setSliderValue('in_loudness', 'val_loud', data.loudness);
+
+                    if (data.camelot && data.camelot !== "Unknown") {
+                        const camelotSelect = document.getElementById('in_camelot');
+                        // 檢查回傳的值是否存在於選項中 (避免 parser 抓到奇怪格式導致報錯)
+                        // 我們的 parser 會回傳 "8B", "12A" 這種格式，這跟 value 是一樣的
+                        camelotSelect.value = data.camelot;
+                    } else {
+                        document.getElementById('in_camelot').value = "Unknown";
+                    }
+
+                } else {
+                    msgBox.innerHTML = `<div class="alert alert-danger">❌ ${result.error}</div>`;
+                }
+            } catch (error) {
+                console.error(error);
+                msgBox.innerHTML = `<div class="alert alert-danger">❌ 連線錯誤</div>`;
+            } finally {
+                // 4. 隱藏 Loading
+                overlay.style.display = "none";
+            }
+        }
+
+        function setSliderValue(inputId, spanId, value) {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.value = value;
+                // 手動觸發 oninput 更新顯示文字
+                updateVal(input, spanId);
+            }
+        }
+    </script>
+</body>
+
+</html>

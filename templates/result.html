@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析結果 - 音樂推薦</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { background-color: #f4f7f6; padding-bottom: 50px; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 24px; }
+        .nav-tabs .nav-link { color: #555; font-weight: bold; border: none; border-bottom: 3px solid transparent; }
+        .nav-tabs .nav-link.active { color: #0d6efd; border-bottom: 3px solid #0d6efd; background: transparent; }
+        .nav-tabs .nav-link:hover { border-color: transparent; color: #0d6efd; }
+        .chart-container { width: 100%; height: 650px; position: relative; }
+        .d-none-custom { display: none !important; }
+        .feature-badge { font-size: 0.9rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark bg-primary mb-4 shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/"><i class="fas fa-headphones me-2"></i>AI 音樂推薦</a>
+            <a href="/" class="btn btn-light btn-sm rounded-pill px-3">重新測試</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        
+        <div class="text-center mb-4">
+            <h5 class="text-muted">這首歌屬於</h5>
+            <h2 class="display-6 fw-bold text-primary">Cluster {{ cluster_id }}</h2>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-white border-bottom-0 pb-0">
+                <ul class="nav nav-tabs justify-content-center" id="vizTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="tab-radar" onclick="switchTab('radar')" type="button">
+                            <i class="fas fa-bullseye me-2"></i>調性雷達 (Camelot Wheel)
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="tab-pca" onclick="switchTab('pca')" type="button">
+                            <i class="fas fa-cube me-2"></i>3D 宇宙投影
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="card-body p-0">
+                <div id="container-radar" class="chart-container">
+                    <div id="polar-chart" style="width:100%; height:100%;"></div>
+                </div>
+
+                <div id="container-pca" class="chart-container d-none-custom">
+                    <div id="pca-chart" style="width:100%; height:100%;"></div>
+                </div>
+                
+                <div class="text-center pb-3 text-muted small">
+                    <span id="chart-desc">顯示離你最近的歌曲距離 (半徑=距離, 角度=調性 Key)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header bg-light fw-bold">
+                        <i class="fas fa-sliders-h me-2"></i>輸入特徵參數
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>BPM (速度)</span> <span class="badge bg-light text-dark border">{{ features.bpm|int }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Energy (能量)</span> <span class="badge bg-light text-dark border">{{ features.energy }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Danceability (舞曲)</span> <span class="badge bg-light text-dark border">{{ features.danceability }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Happiness (開心)</span> <span class="badge bg-light text-dark border">{{ features.happiness }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Acousticness (原聲)</span> <span class="badge bg-light text-dark border">{{ features.acousticness }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Instrumentalness</span> <span class="badge bg-light text-dark border">{{ features.instrumentalness }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Liveness (現場)</span> <span class="badge bg-light text-dark border">{{ features.liveness }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Speechiness (人聲)</span> <span class="badge bg-light text-dark border">{{ features.speechiness }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Loudness (響度)</span> <span class="badge bg-light text-dark border">{{ features.loudness|int }} dB</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="card h-100">
+                    <div class="card-header bg-success text-white fw-bold">
+                        <i class="fas fa-list-ul me-2"></i>推薦相似歌曲
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="35%">歌名</th>
+                                    <th width="25%">歌手</th>
+                                    <th width="15%">調性</th>
+                                    <th width="15%">距離</th>
+                                    <th width="10%">試聽</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for song in recommendations %}
+                                <tr>
+                                    <td class="fw-bold text-primary">{{ song.title }}</td>
+                                    <td>{{ song.artist }}</td>
+                                    <td><span class="badge bg-secondary">{{ song.camelot }}</span></td>
+                                    <td>{{ "%.4f"|format(song.distance) }}</td>
+                                    <td>
+                                        {% if song.url_youtube %}
+                                            <a href="{{ song.url_youtube }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill">
+                                                <i class="fab fa-youtube"></i>
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var polarData = {{ polar_json | safe }};
+        var pcaData = {{ plot_json | safe }};
+        
+        var layoutConfig = { responsive: true, displayModeBar: false };
+        var layoutConfig3D = { responsive: true, displayModeBar: true };
+
+        // 繪製雷達圖
+        Plotly.newPlot('polar-chart', polarData.data, polarData.layout, layoutConfig);
+        
+        // 繪製 3D 圖
+        Plotly.newPlot('pca-chart', pcaData.data, pcaData.layout, layoutConfig3D);
+
+        function switchTab(tabName) {
+            document.getElementById('tab-radar').classList.remove('active');
+            document.getElementById('tab-pca').classList.remove('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+
+            var radarContainer = document.getElementById('container-radar');
+            var pcaContainer = document.getElementById('container-pca');
+            var desc = document.getElementById('chart-desc');
+
+            if (tabName === 'radar') {
+                radarContainer.classList.remove('d-none-custom');
+                pcaContainer.classList.add('d-none-custom');
+                // 修正文字
+                desc.innerText = "顯示離你最近的歌曲距離 (半徑=距離, 角度=調性 Key)";
+                Plotly.Plots.resize('polar-chart');
+            } else {
+                radarContainer.classList.add('d-none-custom');
+                pcaContainer.classList.remove('d-none-custom');
+                desc.innerText = "顯示所有歌曲在音樂宇宙中的位置 (3D PCA)";
+                Plotly.Plots.resize('pca-chart');
+            }
+        }
+    </script>
+</body>
+</html>
